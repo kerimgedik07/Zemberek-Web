@@ -4,7 +4,7 @@ Bu proje, yabancılara Türkçe öğretmek amacıyla geliştirilmiş yapay zeka 
 
 ## 👨‍💻 Geliştirici
 - **Geliştirici:** [Arş. Gör. Kerim Gedik](https://github.com/kerimgedik07) - Tüm Zemberek kütüphanesinin Python'a entegre edilmesi, Flask API'nin oluşturulması, dilbilgisel ve morfolojik hataların Türkçe dil kurallarına (ünsüz yumuşaması vb.) uygun şekilde çözümlenmesi.
-- **Web Arayüzü & Entegrasyon:** Yazılım Mühendisi Kadir Gedik tarafından hazırlanan web SaaS platformunda tüketilir.
+- **Web Arayüzü & Entegrasyon:** Yazılım Mühendisi Kadir Gedik tarafından hazırlanan web SaaS platformunda (https://kerimgedik.tech) tüketilir.
 
 ## 🚀 Özellikler
 
