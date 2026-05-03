@@ -1,0 +1,1478 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zemberek NLP — Türkçe Doğal Dil İşleme</title>
+    <meta name="description" content="Zemberek NLP ile Türkçe metin normalizasyonu, yazım kontrolü, morfolojik analiz ve daha fazlası.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #f8fafc;
+            --bg-secondary: #ffffff;
+            --bg-card: rgba(255, 255, 255, 0.9);
+            --bg-input: rgba(241, 245, 249, 0.95);
+            --border-color: rgba(15, 118, 110, 0.14);
+            --border-glow: rgba(13, 148, 136, 0.35);
+            --text-primary: #0f172a;
+            --text-secondary: #475569;
+            --text-muted: #64748b;
+            --accent-1: #0f766e;
+            --accent-2: #06b6d4;
+            --accent-3: #0ea5e9;
+            --accent-gradient: linear-gradient(135deg, #0f766e, #06b6d4, #0ea5e9);
+            --success: #34d399;
+            --error: #f87171;
+            --warning: #fbbf24;
+            --shadow-lg: 0 20px 35px -20px rgba(15, 23, 42, 0.25);
+            --shadow-glow: 0 0 32px rgba(6, 182, 212, 0.1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: radial-gradient(ellipse at top right, #ccfbf1 0%, #f8fafc 45%, #eef2ff 100%);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .top-nav {
+            position: sticky;
+            top: 0;
+            z-index: 40;
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(14px);
+            border-bottom: 1px solid rgba(148, 163, 184, 0.25);
+            box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+        }
+
+        .top-line {
+            height: 4px;
+            background: linear-gradient(90deg, #14b8a6, #06b6d4, #8b5cf6);
+        }
+
+        .top-nav-inner {
+            max-width: 1180px;
+            margin: 0 auto;
+            height: 64px;
+            padding: 0 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 0.65rem;
+            color: #0f172a;
+            text-decoration: none;
+            font-weight: 700;
+        }
+
+        .brand-badge {
+            width: 34px;
+            height: 34px;
+            border-radius: 10px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #14b8a6, #06b6d4);
+            color: #fff;
+            font-size: 0.95rem;
+            box-shadow: 0 8px 20px rgba(20, 184, 166, 0.28);
+        }
+
+        .nav-links {
+            display: flex;
+            align-items: center;
+            gap: 0.45rem;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+        }
+
+        .nav-link {
+            text-decoration: none;
+            color: #334155;
+            font-size: 0.86rem;
+            font-weight: 600;
+            border-radius: 10px;
+            padding: 0.45rem 0.8rem;
+            transition: all 0.2s ease;
+        }
+
+        .nav-link:hover {
+            background: #f1f5f9;
+            color: #0f766e;
+        }
+
+        .nav-link.active {
+            background: #0f766e;
+            color: #fff;
+            box-shadow: 0 8px 20px rgba(15, 118, 110, 0.28);
+        }
+
+        /* Animated background */
+        .bg-animation {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            overflow: hidden;
+            pointer-events: none;
+        }
+
+        .bg-animation .orb {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(80px);
+            opacity: 0.08;
+            animation: float 20s infinite ease-in-out;
+        }
+
+        .bg-animation .orb:nth-child(1) {
+            width: 600px;
+            height: 600px;
+            background: #14b8a6;
+            top: -200px;
+            right: -100px;
+            animation-delay: 0s;
+        }
+
+        .bg-animation .orb:nth-child(2) {
+            width: 400px;
+            height: 400px;
+            background: #06b6d4;
+            bottom: -100px;
+            left: -100px;
+            animation-delay: -7s;
+        }
+
+        .bg-animation .orb:nth-child(3) {
+            width: 300px;
+            height: 300px;
+            background: #0ea5e9;
+            top: 50%;
+            left: 50%;
+            animation-delay: -14s;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            25% { transform: translate(50px, -50px) scale(1.1); }
+            50% { transform: translate(-30px, 30px) scale(0.95); }
+            75% { transform: translate(40px, 20px) scale(1.05); }
+        }
+
+        /* Header */
+        .header {
+            position: relative;
+            z-index: 10;
+            padding: 1.25rem 2rem 0;
+            text-align: center;
+        }
+
+        .logo-container {
+            display: inline-flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .logo-icon {
+            width: 56px;
+            height: 56px;
+            background: var(--accent-gradient);
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.75rem;
+            box-shadow: 0 8px 32px rgba(99, 102, 241, 0.3);
+            animation: pulse-glow 3s infinite ease-in-out;
+        }
+
+        @keyframes pulse-glow {
+            0%, 100% { box-shadow: 0 8px 32px rgba(99, 102, 241, 0.3); }
+            50% { box-shadow: 0 8px 48px rgba(99, 102, 241, 0.5); }
+        }
+
+        .logo-text h1 {
+            font-size: 2rem;
+            font-weight: 800;
+            background: var(--accent-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            letter-spacing: -0.02em;
+        }
+
+        .subtitle {
+            color: var(--text-secondary);
+            font-size: 1rem;
+            font-weight: 400;
+            margin-top: 0.25rem;
+        }
+
+        /* Tabs */
+        .tabs-container {
+            position: relative;
+            z-index: 10;
+            padding: 1.5rem 2rem;
+            display: flex;
+            justify-content: center;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 0.25rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 0.375rem;
+            backdrop-filter: blur(18px);
+            overflow-x: auto;
+            max-width: 100%;
+            box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+        }
+
+        .tab {
+            padding: 0.625rem 1.25rem;
+            border: none;
+            background: transparent;
+            color: var(--text-secondary);
+            font-family: 'Inter', sans-serif;
+            font-size: 0.85rem;
+            font-weight: 500;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            white-space: nowrap;
+            position: relative;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .tab:hover {
+            color: var(--text-primary);
+            background: rgba(15, 118, 110, 0.08);
+        }
+
+        .tab.active {
+            background: var(--accent-gradient);
+            color: white;
+            box-shadow: 0 8px 20px rgba(15, 118, 110, 0.28);
+        }
+
+        .tab .emoji {
+            font-size: 1.1rem;
+        }
+
+        /* Main content */
+        .main {
+            position: relative;
+            z-index: 10;
+            max-width: 980px;
+            margin: 0 auto;
+            padding: 0 2rem 3rem;
+        }
+
+        /* Panel */
+        .panel {
+            display: none;
+            animation: fadeSlideIn 0.4s ease;
+        }
+
+        .panel.active {
+            display: block;
+        }
+
+        @keyframes fadeSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(12px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Cards */
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            padding: 2rem;
+            backdrop-filter: blur(16px);
+            box-shadow: var(--shadow-lg);
+            transition: border-color 0.3s ease;
+        }
+
+        .card:hover {
+            border-color: var(--border-glow);
+        }
+
+        .card-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .card-desc {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+            margin-bottom: 1.5rem;
+            line-height: 1.6;
+        }
+
+        /* Input area */
+        .input-group {
+            position: relative;
+            margin-bottom: 1.25rem;
+        }
+
+        .input-group label {
+            display: block;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: 0.5rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        textarea, input[type="text"] {
+            width: 100%;
+            background: var(--bg-input);
+            border: 1px solid var(--border-color);
+            border-radius: 14px;
+            padding: 1rem 1.25rem;
+            color: var(--text-primary);
+            font-family: 'Inter', sans-serif;
+            font-size: 0.95rem;
+            resize: vertical;
+            transition: all 0.3s ease;
+            outline: none;
+        }
+
+        textarea {
+            min-height: 120px;
+        }
+
+        textarea:focus, input[type="text"]:focus {
+            border-color: var(--accent-1);
+            box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.15);
+        }
+
+        textarea::placeholder, input[type="text"]::placeholder {
+            color: var(--text-muted);
+        }
+
+        /* Examples */
+        .examples {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-bottom: 1.25rem;
+        }
+
+        .example-chip {
+            padding: 0.375rem 0.875rem;
+            background: rgba(15, 118, 110, 0.08);
+            border: 1px solid rgba(15, 118, 110, 0.18);
+            border-radius: 100px;
+            color: #0f766e;
+            font-size: 0.78rem;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .example-chip:hover {
+            background: rgba(15, 118, 110, 0.13);
+            border-color: var(--accent-1);
+            transform: translateY(-1px);
+        }
+
+        /* Button */
+        .btn-primary {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.875rem 2rem;
+            background: var(--accent-gradient);
+            border: none;
+            border-radius: 14px;
+            color: white;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 10px 24px rgba(15, 118, 110, 0.3);
+            width: 100%;
+            justify-content: center;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 14px 30px rgba(15, 118, 110, 0.35);
+        }
+
+        .btn-primary:active {
+            transform: translateY(0);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-primary .spinner {
+            display: none;
+            width: 18px;
+            height: 18px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+        }
+
+        .btn-primary.loading .spinner {
+            display: block;
+        }
+
+        .btn-primary.loading .btn-text {
+            display: none;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Results */
+        .results-container {
+            margin-top: 1.5rem;
+        }
+
+        .result-card {
+            background: rgba(255, 255, 255, 0.85);
+            border: 1px solid rgba(15, 118, 110, 0.14);
+            border-radius: 16px;
+            padding: 1.5rem;
+            margin-top: 1rem;
+            animation: fadeSlideIn 0.3s ease;
+        }
+
+        .result-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1rem;
+        }
+
+        .result-label {
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--accent-3);
+        }
+
+        .result-time {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            background: rgba(15, 118, 110, 0.08);
+            padding: 0.25rem 0.75rem;
+            border-radius: 100px;
+        }
+
+        .result-text {
+            font-size: 1.05rem;
+            line-height: 1.8;
+            color: var(--text-primary);
+        }
+
+        .result-input {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            padding-bottom: 0.75rem;
+            margin-bottom: 0.75rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .result-output {
+            color: var(--success);
+            font-weight: 500;
+        }
+
+        /* Word analysis */
+        .word-group {
+            margin-bottom: 1rem;
+            padding: 1rem;
+            background: rgba(241, 245, 249, 0.9);
+            border-radius: 12px;
+            border-left: 3px solid var(--accent-1);
+        }
+
+        .word-group:last-child {
+            margin-bottom: 0;
+        }
+
+        .word-title {
+            font-weight: 700;
+            color: var(--accent-3);
+            font-size: 1rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .analysis-item {
+            padding: 0.35rem 0;
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            font-family: 'SF Mono', 'Fira Code', monospace;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+        }
+
+        .analysis-item:last-child {
+            border-bottom: none;
+        }
+
+        .analysis-best {
+            color: var(--success);
+            font-weight: 600;
+        }
+
+        /* Token table */
+        .token-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            margin-top: 0.5rem;
+        }
+
+        .token-table th {
+            text-align: left;
+            padding: 0.75rem 1rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: var(--text-muted);
+            background: rgba(241, 245, 249, 0.95);
+        }
+
+        .token-table th:first-child { border-radius: 10px 0 0 0; }
+        .token-table th:last-child { border-radius: 0 10px 0 0; }
+
+        .token-table td {
+            padding: 0.65rem 1rem;
+            font-size: 0.88rem;
+            border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+        }
+
+        .token-type {
+            display: inline-block;
+            padding: 0.2rem 0.65rem;
+            border-radius: 100px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .token-type.Word { background: rgba(99, 102, 241, 0.15); color: var(--accent-3); }
+        .token-type.Punctuation { background: rgba(251, 191, 36, 0.15); color: var(--warning); }
+        .token-type.Number { background: rgba(52, 211, 153, 0.15); color: var(--success); }
+        .token-type.Time { background: rgba(236, 72, 153, 0.15); color: #f472b6; }
+        .token-type.Unknown { background: rgba(248, 113, 113, 0.15); color: var(--error); }
+        .token-type.Date { background: rgba(236, 72, 153, 0.15); color: #f472b6; }
+        .token-type.Email { background: rgba(52, 211, 153, 0.15); color: var(--success); }
+        .token-type.URL { background: rgba(52, 211, 153, 0.15); color: var(--success); }
+        .token-type.Abbreviation { background: rgba(99, 102, 241, 0.15); color: var(--accent-3); }
+
+        /* Sentences list */
+        .sentence-item {
+            display: flex;
+            gap: 0.75rem;
+            padding: 0.75rem 0;
+            border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+        }
+
+        .sentence-item:last-child { border-bottom: none; }
+
+        .sentence-num {
+            min-width: 28px;
+            height: 28px;
+            background: var(--accent-gradient);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+
+        .sentence-text {
+            line-height: 1.6;
+            font-size: 0.92rem;
+            padding-top: 0.15rem;
+        }
+
+        /* Suggestion chips */
+        .suggestion-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.375rem;
+        }
+
+        .suggestion-chip {
+            padding: 0.3rem 0.7rem;
+            background: rgba(52, 211, 153, 0.1);
+            border: 1px solid rgba(52, 211, 153, 0.2);
+            border-radius: 8px;
+            font-size: 0.82rem;
+            color: var(--success);
+        }
+
+        .no-suggestion {
+            color: var(--error);
+            font-size: 0.85rem;
+            font-style: italic;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .header { padding: 1.5rem 1rem 0; }
+            .tabs-container { padding: 1rem; }
+            .tabs { border-radius: 12px; padding: 0.25rem; }
+            .tab { padding: 0.5rem 0.75rem; font-size: 0.78rem; }
+            .tab .tab-label { display: none; }
+            .tab .emoji { font-size: 1.2rem; }
+            .main { padding: 0 1rem 2rem; }
+            .card { padding: 1.5rem; border-radius: 16px; }
+            .logo-text h1 { font-size: 1.5rem; }
+            .top-nav-inner { height: auto; padding: 0.7rem 1rem; flex-direction: column; align-items: flex-start; }
+            .nav-links { width: 100%; justify-content: flex-start; }
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--accent-1); }
+
+        /* Toast notification */
+        .toast {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            padding: 1rem 1.5rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 14px;
+            backdrop-filter: blur(14px);
+            box-shadow: var(--shadow-lg);
+            z-index: 1000;
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            font-size: 0.9rem;
+        }
+
+        .toast.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        .toast.error {
+            border-color: rgba(248, 113, 113, 0.3);
+            color: var(--error);
+        }
+
+        /* Disambig section */
+        .disambig-section {
+            margin-top: 1rem;
+        }
+
+        .disambig-title {
+            font-size: 0.8rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: var(--accent-3);
+            margin-bottom: 0.75rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .disambig-best {
+            margin-top: 1.25rem;
+        }
+
+        .disambig-best .disambig-title {
+            color: var(--success);
+        }
+
+        .best-item {
+            padding: 0.4rem 0;
+            color: var(--success);
+            font-weight: 500;
+            font-family: 'SF Mono', 'Fira Code', monospace;
+            font-size: 0.85rem;
+        }
+
+        /* Stem token styles */
+        .stem-token-container {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 1rem 1.25rem;
+            background: linear-gradient(135deg, rgba(52, 211, 153, 0.08), rgba(52, 211, 153, 0.03));
+            border: 1px solid rgba(52, 211, 153, 0.2);
+            border-radius: 14px;
+            margin-bottom: 1rem;
+            animation: fadeSlideIn 0.3s ease;
+        }
+
+        .stem-token-label {
+            font-size: 0.72rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--success);
+            white-space: nowrap;
+        }
+
+        .stem-token-value {
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: var(--success);
+            font-family: 'SF Mono', 'Fira Code', monospace;
+            text-shadow: 0 0 20px rgba(52, 211, 153, 0.3);
+        }
+
+        .stem-token-arrow {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+        }
+
+        .stem-badge {
+            display: inline-block;
+            padding: 0.15rem 0.5rem;
+            background: rgba(52, 211, 153, 0.1);
+            border: 1px solid rgba(52, 211, 153, 0.15);
+            border-radius: 6px;
+            font-size: 0.72rem;
+            font-weight: 600;
+            color: var(--success);
+            font-family: 'SF Mono', 'Fira Code', monospace;
+            margin-left: 0.5rem;
+            vertical-align: middle;
+        }
+
+        .stem-tokens-section {
+            margin-top: 1.25rem;
+            padding: 1rem;
+            background: linear-gradient(135deg, rgba(52, 211, 153, 0.06), rgba(52, 211, 153, 0.02));
+            border: 1px solid rgba(52, 211, 153, 0.15);
+            border-radius: 12px;
+        }
+
+        .stem-tokens-title {
+            font-size: 0.8rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: var(--success);
+            margin-bottom: 0.75rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid rgba(52, 211, 153, 0.12);
+        }
+
+        .stem-token-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.4rem 0;
+            font-size: 0.88rem;
+        }
+
+        .stem-token-word {
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        .stem-token-result {
+            color: var(--success);
+            font-weight: 600;
+            font-family: 'SF Mono', 'Fira Code', monospace;
+        }
+        /* Cümle Ögesi Badges */
+        .oge-badge {
+            display: inline-block;
+            padding: 0.2rem 0.65rem;
+            border-radius: 100px;
+            font-size: 0.73rem;
+            font-weight: 700;
+            letter-spacing: 0.02em;
+            white-space: nowrap;
+        }
+        .oge-ozne    { background: rgba(99,102,241,0.18); color: #a5b4fc; border: 1px solid rgba(99,102,241,0.3); }
+        .oge-yuklem  { background: rgba(52,211,153,0.15); color: #6ee7b7; border: 1px solid rgba(52,211,153,0.3); }
+        .oge-nesne   { background: rgba(251,191,36,0.15); color: #fcd34d; border: 1px solid rgba(251,191,36,0.3); }
+        .oge-bnesne  { background: rgba(245,158,11,0.15); color: #fbbf24; border: 1px solid rgba(245,158,11,0.3); }
+        .oge-tumlec  { background: rgba(236,72,153,0.15); color: #f9a8d4; border: 1px solid rgba(236,72,153,0.3); }
+        .oge-zarf    { background: rgba(14,165,233,0.15); color: #7dd3fc; border: 1px solid rgba(14,165,233,0.3); }
+        .oge-edat    { background: rgba(168,85,247,0.15); color: #d8b4fe; border: 1px solid rgba(168,85,247,0.3); }
+        .oge-diger   { background: rgba(100,116,139,0.12); color: #94a3b8; border: 1px solid rgba(100,116,139,0.2); }
+
+        /* Cümlenin Ögeleri - Grup Kartları */
+        .oge-groups-container {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 1.2rem;
+        }
+        .oge-group-card {
+            background: rgba(248,250,252,0.95);
+            border: 1px solid rgba(148,163,184,0.24);
+            border-radius: 12px;
+            padding: 0.8rem 1.1rem;
+            text-align: center;
+            transition: all 0.2s;
+            min-width: 80px;
+        }
+        .oge-group-card:hover {
+            background: rgba(241,245,249,0.95);
+            border-color: rgba(148,163,184,0.35);
+            transform: translateY(-2px);
+        }
+        .oge-group-phrase {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 0.45rem;
+            line-height: 1.4;
+        }
+        .oge-group-label {
+            display: flex;
+            justify-content: center;
+        }
+        .oge-separator {
+            color: rgba(100,116,139,0.35);
+            font-size: 1.5rem;
+            font-weight: 300;
+            user-select: none;
+            padding: 0 0.15rem;
+        }
+
+        .site-footer {
+            position: relative;
+            z-index: 10;
+            border-top: 1px solid rgba(148, 163, 184, 0.2);
+            background: rgba(255, 255, 255, 0.65);
+            backdrop-filter: blur(8px);
+            margin-top: 1rem;
+        }
+
+        .site-footer-inner {
+            max-width: 1180px;
+            margin: 0 auto;
+            padding: 1rem 1rem 1.2rem;
+            display: flex;
+            gap: 0.8rem;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            color: #64748b;
+            font-size: 0.88rem;
+        }
+
+        .site-footer strong {
+            color: #334155;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <nav class="top-nav">
+        <div class="top-line"></div>
+        <div class="top-nav-inner">
+            <a class="brand" href="https://kerimgedik.tech">
+                <span class="brand-badge">TR</span>
+                <span>Türkçe Öğretim</span>
+            </a>
+            <div class="nav-links">
+                <a class="nav-link" href="https://kerimgedik.tech">Ana Sayfa</a>
+                <a class="nav-link" href="https://kerimgedik.tech/yazili-egitim">Yazılı Eğitim</a>
+                <a class="nav-link" href="https://kerimgedik.tech/sesli-egitim">Sesli Eğitim</a>
+                <a class="nav-link active" href="/">Zemberek</a>
+                <a class="nav-link" href="https://kerimgedik.tech/pricing">Fiyatlandırma</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="bg-animation">
+        <div class="orb"></div>
+        <div class="orb"></div>
+        <div class="orb"></div>
+    </div>
+
+    <header class="header">
+        <div class="logo-container">
+            <div class="logo-icon">🇹🇷</div>
+            <div class="logo-text">
+                <h1>Zemberek NLP</h1>
+            </div>
+        </div>
+        <p class="subtitle">Türkçe Doğal Dil İşleme Platformu</p>
+    </header>
+
+    <nav class="tabs-container">
+        <div class="tabs" id="tabs">
+            <button class="tab active" data-panel="boundary" id="tab-boundary">
+                <span class="emoji">📐</span>
+                <span class="tab-label">Cümle Sınırı</span>
+            </button>
+            <button class="tab" data-panel="morphology" id="tab-morphology">
+                <span class="emoji">🔬</span>
+                <span class="tab-label">Morfoloji</span>
+            </button>
+            <button class="tab" data-panel="disambiguate" id="tab-disambiguate">
+                <span class="emoji">🎯</span>
+                <span class="tab-label">Anlam Ayrıştırma</span>
+            </button>
+            <button class="tab" data-panel="tokenize" id="tab-tokenize">
+                <span class="emoji">🧩</span>
+                <span class="tab-label">Tokenizasyon</span>
+            </button>
+            <button class="tab" data-panel="cumle-ogeleri" id="tab-cumle-ogeleri">
+                <span class="emoji">📊</span>
+                <span class="tab-label">Cümlenin Ögeleri (Beta)</span>
+            </button>
+        </div>
+    </nav>
+
+    <main class="main">
+        <!-- Normalization Panel -->
+        <div class="panel" id="panel-normalize">
+            <div class="card">
+                <div class="card-title">✨ Cümle Normalizasyonu</div>
+                <div class="card-desc">Günlük dilde yazılmış, kısaltma ve yazım hatası içeren metinleri düzgün Türkçe'ye çevirir.</div>
+
+                <div class="examples">
+                    <button class="example-chip" onclick="setInput('normalize-input', 'Yrn okua gidicem')">Yrn okua gidicem</button>
+                    <button class="example-chip" onclick="setInput('normalize-input', 'Tmm, yarin havuza giricem ve aksama kadar yaticam')">Tmm, yarin havuza giricem...</button>
+                    <button class="example-chip" onclick="setInput('normalize-input', 'yok hocam kesınlıkle oyle birşey yok')">yok hocam kesınlıkle...</button>
+                    <button class="example-chip" onclick="setInput('normalize-input', 'Kredi başvrusu yapmk istiyrum.')">Kredi başvrusu yapmk...</button>
+                </div>
+
+                <div class="input-group">
+                    <label for="normalize-input">Metin Girin</label>
+                    <textarea id="normalize-input" placeholder="Türkçe metninizi yazın... (ör: Yrn okua gidicem)"></textarea>
+                </div>
+                <button class="btn-primary" onclick="doNormalize()" id="btn-normalize">
+                    <div class="spinner"></div>
+                    <span class="btn-text">Normalleştir</span>
+                </button>
+                <div class="results-container" id="normalize-results"></div>
+            </div>
+        </div>
+
+        <!-- Spell Check Panel -->
+        <div class="panel" id="panel-spellcheck">
+            <div class="card">
+                <div class="card-title">📝 Yazım Kontrolü & Öneri</div>
+                <div class="card-desc">Yanlış yazılmış kelimelere doğru yazım önerileri sunar. Birden fazla kelimeyi boşlukla ayırarak yazabilirsiniz.</div>
+
+                <div class="examples">
+                    <button class="example-chip" onclick="setInput('spell-input', 'okuyablirim')">okuyablirim</button>
+                    <button class="example-chip" onclick="setInput('spell-input', 'tartısıyor')">tartısıyor</button>
+                    <button class="example-chip" onclick="setInput('spell-input', 'kıredi geldm geliyom')">kıredi geldm geliyom</button>
+                    <button class="example-chip" onclick="setInput('spell-input', 'Ankar\'ada')">Ankar'ada</button>
+                </div>
+
+                <div class="input-group">
+                    <label for="spell-input">Kelime(ler)</label>
+                    <input type="text" id="spell-input" placeholder="Kontrol edilecek kelimeleri yazın...">
+                </div>
+                <button class="btn-primary" onclick="doSpellCheck()" id="btn-spell">
+                    <div class="spinner"></div>
+                    <span class="btn-text">Kontrol Et</span>
+                </button>
+                <div class="results-container" id="spell-results"></div>
+            </div>
+        </div>
+
+        <!-- Sentence Boundary Panel -->
+        <div class="panel active" id="panel-boundary">
+            <div class="card">
+                <div class="card-title">📐 Cümle Sınırı Tespiti</div>
+                <div class="card-desc">Bir paragrafı cümlelere ayırır. Nokta, soru ve ünlem işaretlerindeki cümle sınırlarını otomatik tespit eder.</div>
+
+                <div class="examples">
+                    <button class="example-chip" onclick="setInput('boundary-input', 'İnsanoğlu aslında ne para ne sevgi ne kariyer ne şöhret ne de çevre ile sonsuza dek mutlu olabilecek bir yapıya sahiptir. Dış kaynaklardan gelebilecek bu mutluluklar sadece belirli bir zaman için insanı mutlu kılıyor. Kişi bu kaynakları elde ettiği zaman belirli bir dönem için kendini iyi hissediyor.')">Örnek paragraf</button>
+                </div>
+
+                <div class="input-group">
+                    <label for="boundary-input">Paragraf</label>
+                    <textarea id="boundary-input" placeholder="Cümlelere ayırılacak paragrafı yazın..."></textarea>
+                </div>
+                <button class="btn-primary" onclick="doBoundary()" id="btn-boundary">
+                    <div class="spinner"></div>
+                    <span class="btn-text">Cümlelere Ayır</span>
+                </button>
+                <div class="results-container" id="boundary-results"></div>
+            </div>
+        </div>
+
+        <!-- Morphology Panel -->
+        <div class="panel" id="panel-morphology">
+            <div class="card">
+                <div class="card-title">🔬 Morfolojik Analiz</div>
+                <div class="card-desc">Bir kelimenin kök, ek ve dilbilgisel özelliklerini ortaya çıkarır. Kelimenin olası tüm çözümlemelerini gösterir.</div>
+
+                <div class="examples">
+                    <button class="example-chip" onclick="setInput('morph-input', 'kalemin')">kalemin</button>
+                    <button class="example-chip" onclick="setInput('morph-input', 'evlerinden')">evlerinden</button>
+                    <button class="example-chip" onclick="setInput('morph-input', 'güzelleştirilmiş')">güzelleştirilmiş</button>
+                    <button class="example-chip" onclick="setInput('morph-input', 'okuduklarımdan')">okuduklarımdan</button>
+                </div>
+
+                <div class="input-group">
+                    <label for="morph-input">Kelime</label>
+                    <input type="text" id="morph-input" placeholder="Analiz edilecek kelimeyi yazın...">
+                </div>
+                <button class="btn-primary" onclick="doMorphology()" id="btn-morph">
+                    <div class="spinner"></div>
+                    <span class="btn-text">Analiz Et</span>
+                </button>
+                <div class="results-container" id="morph-results"></div>
+            </div>
+        </div>
+
+        <!-- Disambiguate Panel -->
+        <div class="panel" id="panel-disambiguate">
+            <div class="card">
+                <div class="card-title">🎯 Cümle Analizi & Anlam Ayrıştırma</div>
+                <div class="card-desc">Cümledeki her kelimenin olası anlamlarını analiz eder ve bağlama göre en doğru anlamı seçer.</div>
+
+                <div class="examples">
+                    <button class="example-chip" onclick="setInput('disamb-input', 'Yarın kar yağacak.')">Yarın kar yağacak.</button>
+                    <button class="example-chip" onclick="setInput('disamb-input', 'Ali okula gidiyor.')">Ali okula gidiyor.</button>
+                    <button class="example-chip" onclick="setInput('disamb-input', 'Güzel bir gün olacak.')">Güzel bir gün olacak.</button>
+                </div>
+
+                <div class="input-group">
+                    <label for="disamb-input">Cümle</label>
+                    <input type="text" id="disamb-input" placeholder="Analiz edilecek cümleyi yazın...">
+                </div>
+                <button class="btn-primary" onclick="doDisambiguate()" id="btn-disamb">
+                    <div class="spinner"></div>
+                    <span class="btn-text">Analiz Et & Ayrıştır</span>
+                </button>
+                <div class="results-container" id="disamb-results"></div>
+            </div>
+        </div>
+
+        <!-- Tokenize Panel -->
+        <div class="panel" id="panel-tokenize">
+            <div class="card">
+                <div class="card-title">🧩 Tokenizasyon</div>
+                <div class="card-desc">Metni parçalara (token) ayırır ve her parçanın tipini, konumunu belirler.</div>
+
+                <div class="examples">
+                    <button class="example-chip" onclick="setInput('token-input', 'Saat 12:00.')">Saat 12:00.</button>
+                    <button class="example-chip" onclick="setInput('token-input', 'Dr. Ahmet Bey yarın saat 14:30\'da gelecek.')">Dr. Ahmet Bey yarın...</button>
+                    <button class="example-chip" onclick="setInput('token-input', 'Bugün 25.5 TL ödedim!')">Bugün 25.5 TL ödedim!</button>
+                </div>
+
+                <div class="input-group">
+                    <label for="token-input">Metin</label>
+                    <input type="text" id="token-input" placeholder="Tokenize edilecek metni yazın...">
+                </div>
+                <button class="btn-primary" onclick="doTokenize()" id="btn-token">
+                    <div class="spinner"></div>
+                    <span class="btn-text">Tokenize Et</span>
+                </button>
+                <div class="results-container" id="token-results"></div>
+            </div>
+        </div>
+
+        <!-- Cümlenin Ögeleri Panel -->
+        <div class="panel" id="panel-cumle-ogeleri">
+            <div class="card">
+                <div class="card-title">📊 Cümlenin Ögeleri</div>
+                <div class="card-desc">Cümleyi dilbilgisi kurallarına göre ögelerine ayırır. Kelime gruplarını (tamlamalar, birleşik yapılar) tespit ederek özne, yüklem, nesne, tümleç olarak sınıflandırır.</div>
+
+                <div class="examples">
+                    <button class="example-chip" onclick="setInput('oge-input', 'Ahmet okula gitti.')">Ahmet okula gitti.</button>
+                    <button class="example-chip" onclick="setInput('oge-input', 'Küçük çocuk kırmızı elmayı yedi.')">Küçük çocuk kırmızı elmayı...</button>
+                    <button class="example-chip" onclick="setInput('oge-input', 'Ege bölgesi muhteşem bir doğa olayına ev sahipliği yapıyor.')">Ege bölgesi muhteşem...</button>
+                </div>
+
+                <div class="input-group">
+                    <label for="oge-input">Cümle</label>
+                    <input type="text" id="oge-input" placeholder="Analiz edilecek cümleyi yazın...">
+                </div>
+                <button class="btn-primary" onclick="doCumleOgeleri()" id="btn-oge">
+                    <div class="spinner"></div>
+                    <span class="btn-text">Analiz Et</span>
+                </button>
+                <div class="results-container" id="oge-results"></div>
+            </div>
+        </div>
+    </main>
+
+    <div class="toast" id="toast"></div>
+
+    <footer class="site-footer">
+        <div class="site-footer-inner">
+            <span>Developed by <strong>Kadir GEDİK</strong> (Software Engineer)</span>
+            <span>•</span>
+            <span>Project Idea by <strong>Arş. Gör. Kerim GEDİK</strong></span>
+        </div>
+    </footer>
+
+    <script>
+        const API_BASE = '';
+
+        // Tab switching
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+                tab.classList.add('active');
+                document.getElementById('panel-' + tab.dataset.panel).classList.add('active');
+            });
+        });
+
+        function setInput(id, text) {
+            document.getElementById(id).value = text;
+        }
+
+        function showToast(msg, isError = false) {
+            const toast = document.getElementById('toast');
+            toast.textContent = msg;
+            toast.className = 'toast show' + (isError ? ' error' : '');
+            setTimeout(() => toast.className = 'toast', 3000);
+        }
+
+        function setLoading(btnId, loading) {
+            const btn = document.getElementById(btnId);
+            if (loading) {
+                btn.classList.add('loading');
+                btn.disabled = true;
+            } else {
+                btn.classList.remove('loading');
+                btn.disabled = false;
+            }
+        }
+
+        async function apiCall(endpoint, body) {
+            const res = await fetch(API_BASE + endpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+            if (!res.ok) {
+                const err = await res.json();
+                throw new Error(err.error || 'Bir hata oluştu');
+            }
+            return await res.json();
+        }
+
+        // Normalize
+        async function doNormalize() {
+            const text = document.getElementById('normalize-input').value.trim();
+            if (!text) { showToast('Lütfen metin girin', true); return; }
+            setLoading('btn-normalize', true);
+            try {
+                const data = await apiCall('/api/normalize', { text });
+                document.getElementById('normalize-results').innerHTML = `
+                    <div class="result-card">
+                        <div class="result-header">
+                            <span class="result-label">Sonuç</span>
+                            <span class="result-time">⏱ ${data.elapsed}</span>
+                        </div>
+                        <div class="result-input">📥 ${escapeHtml(data.input)}</div>
+                        <div class="result-output">📤 ${escapeHtml(data.output)}</div>
+                    </div>
+                `;
+            } catch (e) { showToast(e.message, true); }
+            setLoading('btn-normalize', false);
+        }
+
+        // Spell Check
+        async function doSpellCheck() {
+            const word = document.getElementById('spell-input').value.trim();
+            if (!word) { showToast('Lütfen kelime girin', true); return; }
+            setLoading('btn-spell', true);
+            try {
+                const data = await apiCall('/api/spell-check', { word });
+                let html = '';
+                for (const r of data.results) {
+                    const chips = r.suggestions.length > 0
+                        ? `<div class="suggestion-chips">${r.suggestions.map(s => `<span class="suggestion-chip">${escapeHtml(s)}</span>`).join('')}</div>`
+                        : '<span class="no-suggestion">Öneri bulunamadı</span>';
+                    html += `
+                        <div class="word-group">
+                            <div class="word-title">${escapeHtml(r.word)}</div>
+                            ${chips}
+                        </div>
+                    `;
+                }
+                document.getElementById('spell-results').innerHTML = `
+                    <div class="result-card">
+                        <div class="result-header">
+                            <span class="result-label">Yazım Önerileri</span>
+                            <span class="result-time">⏱ ${data.elapsed}</span>
+                        </div>
+                        ${html}
+                    </div>
+                `;
+            } catch (e) { showToast(e.message, true); }
+            setLoading('btn-spell', false);
+        }
+
+        // Sentence Boundary
+        async function doBoundary() {
+            const text = document.getElementById('boundary-input').value.trim();
+            if (!text) { showToast('Lütfen paragraf girin', true); return; }
+            setLoading('btn-boundary', true);
+            try {
+                const data = await apiCall('/api/sentence-boundary', { text });
+                const items = data.sentences.map((s, i) => `
+                    <div class="sentence-item">
+                        <div class="sentence-num">${i + 1}</div>
+                        <div class="sentence-text">${escapeHtml(s)}</div>
+                    </div>
+                `).join('');
+                document.getElementById('boundary-results').innerHTML = `
+                    <div class="result-card">
+                        <div class="result-header">
+                            <span class="result-label">${data.count} cümle bulundu</span>
+                            <span class="result-time">⏱ ${data.elapsed}</span>
+                        </div>
+                        ${items}
+                    </div>
+                `;
+            } catch (e) { showToast(e.message, true); }
+            setLoading('btn-boundary', false);
+        }
+
+        // Morphology
+        async function doMorphology() {
+            const word = document.getElementById('morph-input').value.trim();
+            if (!word) { showToast('Lütfen kelime girin', true); return; }
+            setLoading('btn-morph', true);
+            try {
+                const data = await apiCall('/api/morphology', { word });
+                const items = data.analyses.map((a, i) => {
+                    const stemBadge = data.stem_tokens && data.stem_tokens[i]
+                        ? `<span class="stem-badge">${escapeHtml(data.stem_tokens[i])}</span>`
+                        : '';
+                    return `<div class="analysis-item">${escapeHtml(a)}${stemBadge}</div>`;
+                }).join('');
+
+                const stemHtml = data.stem_token ? `
+                    <div class="stem-token-container">
+                        <span class="stem-token-label">🌿 Gövde Token</span>
+                        <span class="stem-token-arrow">→</span>
+                        <span class="stem-token-value">${escapeHtml(data.stem_token)}</span>
+                    </div>
+                ` : '';
+
+                document.getElementById('morph-results').innerHTML = `
+                    <div class="result-card">
+                        <div class="result-header">
+                            <span class="result-label">"${escapeHtml(data.word)}" — ${data.count} analiz</span>
+                            <span class="result-time">⏱ ${data.elapsed}</span>
+                        </div>
+                        ${stemHtml}
+                        <div class="word-group">
+                            ${items || '<span class="no-suggestion">Analiz bulunamadı</span>'}
+                        </div>
+                    </div>
+                `;
+            } catch (e) { showToast(e.message, true); }
+            setLoading('btn-morph', false);
+        }
+
+        // Disambiguate
+        async function doDisambiguate() {
+            const sentence = document.getElementById('disamb-input').value.trim();
+            if (!sentence) { showToast('Lütfen cümle girin', true); return; }
+            setLoading('btn-disamb', true);
+            try {
+                const data = await apiCall('/api/disambiguate', { sentence });
+                let beforeHtml = '';
+                for (const e of data.before) {
+                    const analyses = e.analyses.map(a => `<div class="analysis-item">${escapeHtml(a)}</div>`).join('');
+                    beforeHtml += `
+                        <div class="word-group">
+                            <div class="word-title">${escapeHtml(e.word)}</div>
+                            ${analyses}
+                        </div>
+                    `;
+                }
+                const afterHtml = data.after.map(a => `<div class="best-item">✓ ${escapeHtml(a)}</div>`).join('');
+
+                const stemHtml = data.word_stems ? `
+                    <div class="stem-tokens-section">
+                        <div class="stem-tokens-title">🌿 Gövde Tokenlar</div>
+                        ${data.word_stems.map(ws => `
+                            <div class="stem-token-item">
+                                <span class="stem-token-word">${escapeHtml(ws.word)}</span>
+                                <span class="stem-token-arrow">→</span>
+                                <span class="stem-token-result">${escapeHtml(ws.stem)}</span>
+                            </div>
+                        `).join('')}
+                    </div>` : '';
+
+                document.getElementById('disamb-results').innerHTML = `
+                    <div class="result-card">
+                        <div class="result-header">
+                            <span class="result-label">Analiz Sonucu</span>
+                            <span class="result-time">⏱ ${data.elapsed}</span>
+                        </div>
+                        <div class="disambig-section">
+                            <div class="disambig-title">Tüm Olası Analizler (Ayrıştırma Öncesi)</div>
+                            ${beforeHtml}
+                        </div>
+                        <div class="disambig-section disambig-best">
+                            <div class="disambig-title">✅ En Doğru Analiz (Ayrıştırma Sonrası)</div>
+                            ${afterHtml}
+                        </div>
+                        ${stemHtml}
+                    </div>
+                `;
+            } catch (e) { showToast(e.message, true); }
+            setLoading('btn-disamb', false);
+        }
+
+        // Tokenize
+        async function doTokenize() {
+            const text = document.getElementById('token-input').value.trim();
+            if (!text) { showToast('Lütfen metin girin', true); return; }
+            setLoading('btn-token', true);
+            try {
+                const data = await apiCall('/api/tokenize', { text });
+                const rows = data.tokens.map(t => `
+                    <tr>
+                        <td><strong>${escapeHtml(t.content)}</strong></td>
+                        <td><span class="token-type ${t.type_raw}">${escapeHtml(t.type)}</span></td>
+                        <td style="color: var(--text-muted)">${t.start}</td>
+                        <td style="color: var(--text-muted)">${t.end}</td>
+                    </tr>
+                `).join('');
+                document.getElementById('token-results').innerHTML = `
+                    <div class="result-card">
+                        <div class="result-header">
+                            <span class="result-label">${data.count} parça bulundu</span>
+                            <span class="result-time">⏱ ${data.elapsed}</span>
+                        </div>
+                        <table class="token-table">
+                            <thead>
+                                <tr>
+                                    <th>İçerik</th>
+                                    <th>Tip</th>
+                                    <th>Başla</th>
+                                    <th>Bitir</th>
+                                </tr>
+                            </thead>
+                            <tbody>${rows}</tbody>
+                        </table>
+                    </div>
+                `;
+            } catch (e) { showToast(e.message, true); }
+            setLoading('btn-token', false);
+        }
+
+        // Cümlenin Ögeleri
+        function ogeBadge(oge) {
+            if (!oge || oge === '—') return '';
+            const cls = oge === 'Özne' ? 'oge-ozne'
+                      : oge === 'Yüklem' ? 'oge-yuklem'
+                      : oge === 'Belirtili Nesne' ? 'oge-nesne'
+                      : oge === 'Belirtisiz Nesne' ? 'oge-bnesne'
+                      : oge === 'Nesne' ? 'oge-nesne'
+                      : oge === 'Dolaylı Tümleç' ? 'oge-tumlec'
+                      : oge === 'Zarf Tümleci' ? 'oge-zarf'
+                      : oge === 'Edat Tümleci' ? 'oge-edat'
+                      : oge === 'Edat Grubu' ? 'oge-edat'
+                      : 'oge-diger';
+            return `<span class="oge-badge ${cls}">${escapeHtml(oge)}</span>`;
+        }
+
+        async function doCumleOgeleri() {
+            const sentence = document.getElementById('oge-input').value.trim();
+            if (!sentence) { showToast('Lütfen cümle girin', true); return; }
+            setLoading('btn-oge', true);
+            try {
+                const data = await apiCall('/api/cumle-ogeleri', { sentence });
+                const items = data.groups
+                    .filter(g => g.oge !== '—')
+                    .map(g => `
+                        <div class="oge-group-card">
+                            <div class="oge-group-phrase">${escapeHtml(g.phrase)}</div>
+                            <div class="oge-group-label">${ogeBadge(g.oge)}</div>
+                        </div>
+                    `).join('<div class="oge-separator">/</div>');
+
+                document.getElementById('oge-results').innerHTML = `
+                    <div class="result-card">
+                        <div class="result-header">
+                            <span class="result-label">${data.count} öge bulundu</span>
+                            <span class="result-time">⏱ ${data.elapsed}</span>
+                        </div>
+                        <div class="oge-groups-container">
+                            ${items}
+                        </div>
+                    </div>
+                `;
+            } catch (e) { showToast(e.message, true); }
+            setLoading('btn-oge', false);
+        }
+
+        function escapeHtml(str) {
+            const div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+
+        // Enter key support
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                const active = document.querySelector('.panel.active');
+                if (!active) return;
+                const id = active.id.replace('panel-', '');
+                const btn = active.querySelector('.btn-primary');
+                if (btn && !btn.disabled && document.activeElement.tagName !== 'TEXTAREA') {
+                    e.preventDefault();
+                    btn.click();
+                }
+            }
+        });
+    </script>
+</body>
+</html>
